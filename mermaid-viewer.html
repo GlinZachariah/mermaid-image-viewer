@@ -1,0 +1,450 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mermaid File Viewer</title>
+    <script type="module">
+        import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs';
+        mermaid.initialize({
+            startOnLoad: false,
+            theme: 'default',
+            securityLevel: 'loose',
+            flowchart: {
+                useMaxWidth: true,
+                htmlLabels: true,
+                curve: 'basis'
+            }
+        });
+        window.mermaid = mermaid;
+    </script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        .header {
+            background: white;
+            border-radius: 12px;
+            padding: 30px;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        h1 {
+            color: #333;
+            margin-bottom: 20px;
+            font-size: 2em;
+        }
+
+        .controls {
+            display: flex;
+            gap: 15px;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+
+        .file-input-wrapper {
+            position: relative;
+            overflow: hidden;
+            display: inline-block;
+        }
+
+        .file-input-wrapper input[type=file] {
+            position: absolute;
+            left: -9999px;
+        }
+
+        .file-input-label {
+            display: inline-block;
+            padding: 12px 24px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .file-input-label:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+        }
+
+        .file-name {
+            color: #666;
+            font-size: 0.9em;
+            padding: 10px;
+            background: #f5f5f5;
+            border-radius: 6px;
+        }
+
+        button {
+            padding: 12px 24px;
+            background: white;
+            border: 2px solid #667eea;
+            color: #667eea;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.2s;
+        }
+
+        button:hover:not(:disabled) {
+            background: #667eea;
+            color: white;
+            transform: translateY(-2px);
+        }
+
+        button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        select {
+            padding: 12px;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            font-size: 1em;
+            background: white;
+            cursor: pointer;
+        }
+
+        .viewer {
+            background: white;
+            border-radius: 12px;
+            padding: 40px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            min-height: 400px;
+            overflow: auto;
+        }
+
+        #diagram {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 300px;
+        }
+
+        .placeholder {
+            text-align: center;
+            color: #999;
+            padding: 60px 20px;
+        }
+
+        .placeholder svg {
+            width: 120px;
+            height: 120px;
+            margin-bottom: 20px;
+            opacity: 0.3;
+        }
+
+        .error {
+            color: #e74c3c;
+            padding: 20px;
+            background: #fadbd8;
+            border-radius: 8px;
+            border-left: 4px solid #e74c3c;
+        }
+
+        .success {
+            color: #27ae60;
+            padding: 20px;
+            background: #d5f4e6;
+            border-radius: 8px;
+            border-left: 4px solid #27ae60;
+            margin-bottom: 20px;
+        }
+
+        .zoom-controls {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+
+        .zoom-controls button {
+            padding: 8px 16px;
+        }
+
+        #diagram svg {
+            max-width: 100%;
+            height: auto;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Mermaid Diagram Viewer</h1>
+            <div class="controls">
+                <div class="file-input-wrapper">
+                    <input type="file" id="fileInput" accept=".mermaid,.mmd,.txt" />
+                    <label for="fileInput" class="file-input-label">Choose Mermaid File</label>
+                </div>
+                <span class="file-name" id="fileName">No file selected</span>
+
+                <select id="themeSelect">
+                    <option value="default">Default Theme</option>
+                    <option value="dark">Dark Theme</option>
+                    <option value="forest">Forest Theme</option>
+                    <option value="neutral">Neutral Theme</option>
+                    <option value="base">Base Theme</option>
+                </select>
+
+                <div class="zoom-controls">
+                    <button id="zoomIn">Zoom +</button>
+                    <button id="zoomOut">Zoom -</button>
+                    <button id="resetZoom">Reset</button>
+                </div>
+
+                <button id="downloadSvgBtn" disabled>Download SVG</button>
+                <button id="downloadPngBtn" disabled>Download PNG</button>
+            </div>
+        </div>
+
+        <div class="viewer">
+            <div id="message"></div>
+            <div id="diagram">
+                <div class="placeholder">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                        <polyline points="14 2 14 8 20 8"></polyline>
+                        <line x1="16" y1="13" x2="8" y2="13"></line>
+                        <line x1="16" y1="17" x2="8" y2="17"></line>
+                        <polyline points="10 9 9 9 8 9"></polyline>
+                    </svg>
+                    <h3>Select a Mermaid file to view</h3>
+                    <p>Supported formats: .mermaid, .mmd, .txt</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let currentMermaidCode = '';
+        let currentZoom = 1;
+
+        const fileInput = document.getElementById('fileInput');
+        const fileName = document.getElementById('fileName');
+        const diagram = document.getElementById('diagram');
+        const message = document.getElementById('message');
+        const themeSelect = document.getElementById('themeSelect');
+        const downloadSvgBtn = document.getElementById('downloadSvgBtn');
+        const downloadPngBtn = document.getElementById('downloadPngBtn');
+        const zoomInBtn = document.getElementById('zoomIn');
+        const zoomOutBtn = document.getElementById('zoomOut');
+        const resetZoomBtn = document.getElementById('resetZoom');
+
+        fileInput.addEventListener('change', handleFileSelect);
+        themeSelect.addEventListener('change', handleThemeChange);
+        downloadSvgBtn.addEventListener('click', downloadAsSVG);
+        downloadPngBtn.addEventListener('click', downloadAsPNG);
+        zoomInBtn.addEventListener('click', () => adjustZoom(1.2));
+        zoomOutBtn.addEventListener('click', () => adjustZoom(0.8));
+        resetZoomBtn.addEventListener('click', () => adjustZoom(1, true));
+
+        async function handleFileSelect(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            fileName.textContent = file.name;
+
+            try {
+                const text = await file.text();
+                currentMermaidCode = text.trim();
+                await renderDiagram(currentMermaidCode);
+                showMessage('Diagram loaded successfully!', 'success');
+                downloadSvgBtn.disabled = false;
+                downloadPngBtn.disabled = false;
+            } catch (error) {
+                showMessage(`Error loading file: ${error.message}`, 'error');
+                downloadSvgBtn.disabled = true;
+                downloadPngBtn.disabled = true;
+            }
+        }
+
+        async function renderDiagram(code) {
+            try {
+                diagram.innerHTML = '';
+                const id = 'mermaid-' + Date.now();
+                const { svg } = await window.mermaid.render(id, code);
+                diagram.innerHTML = svg;
+                applyZoom();
+            } catch (error) {
+                diagram.innerHTML = '';
+                throw new Error('Invalid Mermaid syntax: ' + error.message);
+            }
+        }
+
+        async function handleThemeChange() {
+            if (!currentMermaidCode) return;
+
+            const theme = themeSelect.value;
+            window.mermaid.initialize({
+                startOnLoad: false,
+                theme: theme,
+                securityLevel: 'loose',
+                flowchart: {
+                    useMaxWidth: true,
+                    htmlLabels: true,
+                    curve: 'basis'
+                }
+            });
+
+            try {
+                await renderDiagram(currentMermaidCode);
+                showMessage('Theme changed successfully!', 'success');
+            } catch (error) {
+                showMessage(`Error changing theme: ${error.message}`, 'error');
+            }
+        }
+
+        function adjustZoom(factor, reset = false) {
+            if (reset) {
+                currentZoom = 1;
+            } else {
+                currentZoom *= factor;
+                currentZoom = Math.max(0.1, Math.min(currentZoom, 5)); // Limit zoom between 0.1 and 5
+            }
+            applyZoom();
+        }
+
+        function applyZoom() {
+            const svg = diagram.querySelector('svg');
+            if (svg) {
+                svg.style.transform = `scale(${currentZoom})`;
+                svg.style.transformOrigin = 'center top';
+            }
+        }
+
+        function showMessage(text, type) {
+            message.className = type;
+            message.textContent = text;
+            setTimeout(() => {
+                message.textContent = '';
+                message.className = '';
+            }, 3000);
+        }
+
+        function downloadAsSVG() {
+            const svg = diagram.querySelector('svg');
+            if (!svg) return;
+
+            try {
+                // Clone the SVG to avoid modifying the original
+                const svgClone = svg.cloneNode(true);
+
+                // Remove any transform styles (zoom) from the clone
+                svgClone.style.transform = '';
+
+                // Serialize the SVG
+                const svgData = new XMLSerializer().serializeToString(svgClone);
+                const svgBlob = new Blob([svgData], { type: 'image/svg+xml;charset=utf-8' });
+
+                // Download
+                const url = URL.createObjectURL(svgBlob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'mermaid-diagram.svg';
+                a.click();
+                URL.revokeObjectURL(url);
+
+                showMessage('SVG downloaded successfully!', 'success');
+            } catch (error) {
+                showMessage(`Error downloading SVG: ${error.message}`, 'error');
+            }
+        }
+
+        async function downloadAsPNG() {
+            const svg = diagram.querySelector('svg');
+            if (!svg) return;
+
+            try {
+                // Clone SVG and remove zoom transform
+                const svgClone = svg.cloneNode(true);
+                svgClone.style.transform = '';
+
+                // Get actual SVG dimensions
+                const bbox = svg.getBBox();
+                const width = bbox.width || svg.width.baseVal.value || 800;
+                const height = bbox.height || svg.height.baseVal.value || 600;
+
+                // Set explicit dimensions on clone
+                svgClone.setAttribute('width', width);
+                svgClone.setAttribute('height', height);
+
+                // Create canvas
+                const canvas = document.createElement('canvas');
+                const scale = 2; // 2x for better quality
+                canvas.width = width * scale;
+                canvas.height = height * scale;
+                const ctx = canvas.getContext('2d');
+
+                // White background
+                ctx.fillStyle = 'white';
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+                // Convert SVG to data URL (inline to avoid CORS)
+                const svgData = new XMLSerializer().serializeToString(svgClone);
+                const svgDataUrl = 'data:image/svg+xml;base64,' + btoa(unescape(encodeURIComponent(svgData)));
+
+                // Load and draw image
+                const img = new Image();
+                img.onload = function() {
+                    ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+
+                    // Convert to PNG and download
+                    canvas.toBlob(function(blob) {
+                        const a = document.createElement('a');
+                        a.href = URL.createObjectURL(blob);
+                        a.download = 'mermaid-diagram.png';
+                        a.click();
+                        showMessage('PNG downloaded successfully!', 'success');
+                    }, 'image/png');
+                };
+
+                img.onerror = function(err) {
+                    showMessage('Error converting to PNG. Try downloading as SVG instead.', 'error');
+                };
+
+                img.src = svgDataUrl;
+            } catch (error) {
+                showMessage(`Error downloading PNG: ${error.message}. Try SVG instead.`, 'error');
+            }
+        }
+
+        // Allow drag and drop
+        document.body.addEventListener('dragover', (e) => {
+            e.preventDefault();
+        });
+
+        document.body.addEventListener('drop', async (e) => {
+            e.preventDefault();
+            const file = e.dataTransfer.files[0];
+            if (file && (file.name.endsWith('.mermaid') || file.name.endsWith('.mmd') || file.name.endsWith('.txt'))) {
+                fileName.textContent = file.name;
+                const text = await file.text();
+                currentMermaidCode = text.trim();
+                await renderDiagram(currentMermaidCode);
+                showMessage('Diagram loaded successfully!', 'success');
+                downloadSvgBtn.disabled = false;
+                downloadPngBtn.disabled = false;
+            }
+        });
+    </script>
+</body>
+</html>
